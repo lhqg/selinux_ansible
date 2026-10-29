@@ -1,0 +1,312 @@
+############################################################################
+#
+#	Ansible SELinux policymodule
+#
+#	https://github.com/lhqg/selinux_ansible
+#
+#
+# Copyright (c) 2022 LHQG, H. Quarantel-Colombani <hubert@quarantel.name>
+# Author: Hubert Quarantel-Colombani <hubert@quarantel.name>
+#
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of version 3 of the GNU General Public License as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+############################################################################
+
+policy_module(ansible, 0.1.0)
+
+########################################
+#
+# Requires
+#
+########################################
+
+gen_require(`
+        attribute domain;
+        attribute unconfined_domain_type;
+
+        attribute systemd_unit_file_type;
+        attribute filesystem_type;
+        attribute file_type;
+
+        type proc_net_t;
+        type udev_var_run_t;
+        type fsadm_var_run_t;
+        type init_var_run_t;
+        type initrc_exec_t;
+        type policykit_t;
+        type syslogd_var_run_t;
+        type system_dbusd_t;
+
+        type cgroup_t;
+        type chkpwd_t;
+
+        type http_port_t;
+        type ldap_port_t;
+
+        type security_t;
+
+        type sysadm_t;
+
+        role unconfined_r;
+        role system_r;
+
+        class capability  { dac_override dac_read_search net_admin } ;
+')
+
+########################################
+#
+# Macro based main declarations
+#
+########################################
+
+# Create role ansible_r and type ansible_t
+#	for a basic Ansible user domain
+userdom_restricted_user_template(ansible)
+mcs_constrained(ansible_t)
+
+# Create and associate SUDO type
+sudo_role_template(ansible, ansible_r, ansible_t)
+mcs_constrained(ansible_sudo_t)
+
+########################################
+#
+#	Types and attributes declarations
+#
+########################################
+
+attribute	ansible_domain;
+
+type ansible_conf_t;
+files_config_file(ansible_conf_t)
+
+type ansible_auth_t;
+files_auth_file(ansible_auth_t)
+
+type ansible_log_t;
+logging_log_file(ansible_log_t)
+
+type ansible_cache_t;
+files_type(ansible_cache_t)
+
+type ansible_bin_t;
+files_type(ansible_bin_t)
+
+type ansible_lib_t;
+files_type(ansible_lib_t)
+
+type ansible_tmp_t;
+files_tmp_file(ansible_tmp_t)
+
+typeattribute   ansible_conf_t  ansible_file_type;
+typeattribute   ansible_log_t   ansible_file_type;
+typeattribute   ansible_cache_t ansible_file_type;
+typeattribute   ansible_bin_t   ansible_file_type;
+typeattribute   ansible_lib_t   ansible_file_type;
+typeattribute   ansible_tmp_t   ansible_file_type;
+
+typeattribute   ansible_t       ansible_domain;
+typeattribute   ansible_sudo_t  ansible_domain;
+
+########################################
+#
+# Policy for ansible_t domain
+#
+########################################
+
+role unconfined_r types ansible_t;
+
+# prevents files created by ansible_u/ansible_t to be created as ansible_u:object_r:... instead of system_u:object_r:...
+domain_obj_id_change_exemption(ansible_t)
+domain_obj_id_change_exemption(ansible_sudo_t)
+
+#
+## Booleans to adapt SELinux policy for Ansible
+#
+
+bool allow_ansible_manage_services      true;
+bool allow_ansible_connectto_http       true;
+bool allow_ansible_connectto_ldap       true;
+
+bool allow_sysadm_read_ansible_files    true;
+
+#
+## Generic permissions
+#
+
+kernel_list_all_proc(ansible_domain)
+
+corecmd_read_bin_files(ansible_domain)
+
+files_exec_usr_files(ansible_domain)
+files_exec_etc_files(ansible_domain)
+
+files_search_locks(ansible_domain)
+
+files_read_var_files(ansible_domain)
+files_read_var_symlinks(ansible_domain)
+files_read_generic_spool(ansible_domain)
+files_read_var_lib_files(ansible_domain)
+files_getattr_lost_found_dirs(ansible_domain)
+
+fs_read_noxattr_fs_files(ansible_domain)
+fs_read_noxattr_fs_symlinks(ansible_domain)
+
+logging_send_syslog_msg(ansible_t)
+logging_send_syslog_msg(ansible_sudo_t)
+logging_send_audit_msgs(ansible_t)
+logging_send_syslog_msg(ansible_sudo_t)
+
+#
+## Permissions on self
+#
+
+allow ansible_domain  self:capability { dac_override dac_read_search };
+
+#
+## Permission on other resources
+#
+
+allow ansible_sudo_t chkpwd_t:process { noatsecure rlimitinh siginh };
+
+allow ansible_domain file_type:dir                      list_dir_perms;
+allow ansible_domain file_type:notdevfile_class_set     getattr;
+
+allow ansible_domain fsadm_var_run_t:file  read_file_perms;
+allow ansible_domain proc_net_t:file       read_file_perms;
+allow ansible_domain udev_var_run_t:file   read_file_perms;
+
+#
+## Permissions on filesystems
+#
+allow ansible_domain filesystem_type:filesystem mount_fs_perms;
+
+#
+## Permissions on security objects
+#
+allow ansible_domain security_t:file       { open read write };
+allow ansible_domain security_t:security   check_context;
+
+#
+## Permissions on Ansible specific resources
+#
+
+allow ansible_domain   ansible_file_type:dir        list_dir_perms;
+allow ansible_domain   ansible_file_type:file       read_file_perms;
+allow ansible_domain   ansible_file_type:lnk_file   read_lnk_file_perms;
+allow ansible_domain   ansible_file_type:lnk_file   read_lnk_file_perms;
+allow ansible_domain   ansible_file_type:sock_file  { create_sock_file_perms rw_sock_file_perms };
+allow ansible_domain   ansible_file_type:fifo_file  { create_fifo_file_perms rw_fifo_file_perms };
+
+allow ansible_domain   ansible_cache_t:dir       manage_dir_perms;
+allow ansible_domain   ansible_cache_t:file      { manage_file_perms relabel_file_perms };
+
+allow ansible_domain   ansible_bin_t:file       exec_file_perms;
+
+allow ansible_domain   ansible_auth_t:dir       { getattr open read search };
+allow ansible_domain   ansible_auth_t:file      { getattr open read lock };
+
+allow ansible_domain   ansible_tmp_t:file       manage_file_perms;
+
+allow ansible_domain   ansible_log_t:dir        manage_dir_perms;
+allow ansible_domain   ansible_log_t:file       { create_file_perms append_file_perms read_file_perms rename };
+
+#
+## File transitions
+#
+
+filetrans_pattern(ansible_domain, ansible_cache_t, ansible_cache_t,  { file dir lnk_file fifo_file sock_file } )
+filetrans_pattern(ansible_domain, ansible_tmp_t,   ansible_tmp_t,    { file dir lnk_file fifo_file sock_file } )
+
+logging_log_filetrans(ansible_domain, ansible_log_t, { file dir })
+
+#
+## Permissions on services
+#
+allow ansible_domain systemd_unit_file_type:service status;
+allow ansible_sudo_t systemd_unit_file_type:service all_service_perms;
+
+systemd_exec_systemctl(ansible_domain)
+systemd_list_unit_dirs(ansible_domain)
+systemd_manage_all_unit_files(ansible_domain)
+systemd_read_fifo_file_passwd_run(ansible_domain)
+systemd_search_unit_dirs(ansible_domain)
+
+# Old school INITRC services
+init_read_script_state(ansible_domain)
+allow ansible_domain initrc_exec_t:service status;
+allow ansible_sudo_t initrc_exec_t:service all_service_perms;
+
+#cgroup
+allow ansible_domain cgroup_t:dir read;
+allow ansible_domain cgroup_t:file { getattr open read };
+
+#pktty
+allow ansible_domain ansible_domain:process { noatsecure rlimitinh siginh };
+allow ansible_domain chkpwd_t:process { noatsecure rlimitinh siginh };
+allow ansible_domain system_dbusd_t:unix_stream_socket connectto;
+allow ansible_domain ansible_domain:process { noatsecure rlimitinh siginh };
+allow ansible_domain ansible_domain:dir search;
+allow ansible_domain ansible_domain:file { read open getattr };
+
+#polkit
+allow ansible_domain system_dbusd_t:dbus send_msg;
+allow ansible_domain policykit_t:dbus send_msg;
+allow policykit_t ansible_domain:dbus send_msg;
+
+#Print unit log from syslog / journal
+allow ansible_domain syslogd_var_run_t:dir read;
+allow ansible_domain syslogd_var_run_t:file { getattr open read };
+
+allow ansible_domain init_var_run_t:fifo_file { open read };
+allow ansible_domain self:capability net_admin;
+
+#
+## Conditioned permissions
+#
+if (allow_ansible_manage_services) {
+        allow ansible_domain systemd_unit_file_type:service all_service_perms;
+        allow ansible_domain initrc_exec_t:service all_service_perms;
+}
+
+if (allow_ansible_connectto_http) {
+        allow ansible_domain http_port_t:tcp_socket  name_connect;
+}
+
+if (allow_ansible_connectto_ldap) {
+        allow ansible_domain ldap_port_t:tcp_socket  name_connect;
+}
+
+#
+## Silence audit when ansible_t is trying to read under /proc
+#
+dontaudit ansible_domain domain:dir                { getattr };
+
+#
+##	Permissions for Sys admins (sysadm_t)
+#
+
+allow sysadm_t  ansible_file_type:dir                   list_dir_perms;
+allow sysadm_t  ansible_file_type:notdevfile_class_set  getattr;
+allow sysadm_t  ansible_file_type:lnk_file              read_lnk_file_perms;
+
+if (allow_sysadm_read_ansible_files) {
+        allow sysadm_t  ansible_file_type:file  read_file_perms; 
+}
+
+#
+## create ansible_u SEUser
+#
+
+user ansible_u roles { ansible_r system_r } level s0 range s0 - s0:c0.c1023;
