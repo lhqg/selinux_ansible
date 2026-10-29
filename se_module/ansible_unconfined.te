@@ -35,6 +35,7 @@ policy_module(ansible_unconfined, 0.1.0)
 gen_require(`
         attribute unconfined_domain_type;
         type ansible_t;
+        role unconfined_r;
 ')
 
 ########################################
