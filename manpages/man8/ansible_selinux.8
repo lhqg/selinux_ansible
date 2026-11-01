@@ -1,0 +1,270 @@
+'\" t
+.TH ansible_selinux 8 "Ansible SELinux policy man page"
+
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+
+.SH Name
+ansible_selinux \- Security Enhanced Linux Policy for Ansible
+
+.SH Description
+.PP
+Security-Enhanced Linux (SELinux) secures Ansible actions via flexible
+mandatory access control (MAC).
+.PP
+For Linux system administrators, Ansible is a very powerful tool to manage and
+automate the deployment and configuration of their managed hosts.
+.PP
+Yet, "with great power comes great responsibility"... So, system administrators
+must be careful when using Ansible to manage their machines and make sure that
+Ansible is not misused by malicious users to compromise their managed hosts nor
+to exfiltrate sensitive information from them.
+.PP
+To help them secure their managed hosts, implement the information security
+policies of their organization, apply the principle of least privilege and
+reduce the surface of attack of their managed hosts, the \fBLHQG\fR company has
+developed an open source SELinux policy module to confine the Ansible processes
+on the managed hosts.
+.PP
+The basic idea is to confine the Ansible processes in a dedicated SELinux domain
+and to define a set of SELinux rules to restrict the access of these processes
+to the managed host resources (files, directories, network ports, other
+processes...).
+.PP
+When properly configured, the Ansible processes should execute with the
+\fIansible_t\fR SELinux type (domain).
+.PP
+You can check if you have these processes running by executing the \fBps\fR
+command with the \fB\-Z\fR qualifier.
+.PP
+For example:
+.RS 2
+\fBps \-eZ | grep ansible_t\fR
+.RE
+
+.SH Entrypoints
+.PP
+Since Ansible is a framework and not a single binary, there is no binary entry
+point to the ansible_t SELinux type/domain.
+.RE
+
+.SH Linux user (SELinux login) mapping to SELinux user
+.PP
+The selinux_ansible policy module defines the \fBansible_u\fR SELinux user and
+the \fBansible_r\fR SELinux role.
+.PP
+For Ansible processes to be effectively confined in the
+\fBansible_u:ansible_r:ansible_t\fR
+SELinux context when the Ansible runner connects to the managed host, system
+administrators must map the Linux account used by the Ansible runner
+host/platform uses.
+.PP
+For instance, if the Ansible runner connects to the managed host with the
+\fIansible\fR account, this account must be mapped to the \fBansible_u\fR
+SELinux user.
+.PP
+.SS "SELinux login global mapping"
+.PP
+The Linux account used by Ansible can be mapped regardless of the method (PAM
+service) it connects to the managed host.
+.PP
+Such SELinux login mapping are managed using the \fBsemanage login\fR command.
+.PP
+For example:
+.RS 2
+\fBsemanage login --add -s ansible_u -r s0 ansible\fR
+.RE
+.SS "SELinux login method/service specific mapping"
+.PP
+The Linux account used by Ansible can be mapped for a specific method (PAM
+service) it connects to the managed host with.
+.PP
+Such SELinux login mapping are managed deploying a text file in the
+\fB/etc/selinux/targeted/login\fR directory.
+.br
+The file name must be the Linux account name used by Ansible to connect to the
+managed host.
+.br
+This file contains one line per specific method/service to map the Linux
+account. Each line must comply with the following format:
+.RS 2
+\fB<SELinux login>:<SELinux user>:<SELinux level range>\fR
+.RE
+.PP
+For example:
+.RS 2
+File \fB/etc/selinux/targeted/logins/ansible\fR:
+.RS 4
+\fBsshd:ansible_u:s0\fR
+.RE
+
+.SH Process types
+.PP
+SELinux defines process types (domains) for each process running on the system.
+Policy governs the access confined processes have to files/directories and all
+other types of resources on the system (network ports, other processes...). 
+.PP
+.SS "Ansible process type: ansible_t"
+.PP
+The \fBansible_t\fR process type (domain) is defined for Ansible processes.
+.br
+This process type is used to confine the Ansible processes and restrict their
+access to files, directories and other resources on the managed host.
+.PP
+The \fBansible_t\fR process type is designed to behave as a confined process
+type with low privileges on the managed host. Its scope of action is limited
+so that it cannot fully manage the host and its resources.
+.br
+For instance, the \fBansible_t\fR process type is not allowed to manage
+(stop/start/restart...) systemd services nor can it reboot the managed host.
+.PP
+.SS "Privilege escalation, Ansible process type: Bansible_sudo_t"
+.PP
+The \fBansible_sudo_t\fR process type (domain) is defined for Ansible processes
+when privilege escalation is used using the \fBsudo\fR command as the Asnible
+\fBbecome\fR mechanism.
+.PP
+The \fBansible_sudo_t\fR process type is designed to behave as a confined
+process type with high privileges on the managed host.
+.br
+Its scope of action is extended in terms of SELinux policy rules,
+so that it can (almost) fully manage the host and its resources.
+.br
+Yet, its effective privileges are limited by the \fBsudo\fR command
+configuration and the \fBsudoers\fR configuration file.
+.PP
+.SS "Permissive ansible_t process type - \fINOT RECOMMENDED\fR"
+.PP
+When the SELinux policy is too restrictive for the Ansible processes to perform
+all their legitimate tasks, in last resort the system administrator can decide
+to make the \fBansible_t\fR and/or \fBansible_sudo_t\fR process type(s)
+\fIpermissive\fR.
+.PP
+Making the ansible_t process type permissive:
+.RS 2
+\fBsemanage permissive \-a ansible_t\fR
+.RE
+.PP
+\fBBEWARE: Permissive process types are not denied any access by SELinux.\fR
+.br
+Access Vector Cache (AVC) messages will still be generated for each access
+attempt.
+.RE
+.PP
+
+.SH Booleans
+.PP
+The SELinux policy rules for the ansible_t domain can be tuned using predefined
+booleans to allow/disallow the Ansible runner different actions on the managed
+host.
+.PP
+\fBallow_ansible_connectto_http\fR (true)
+.RS 4
+Whether to allow the Ansible processes to connect (TCP) to HTTP ports (labeled
+as http_port_t).
+.RE
+.PP
+\fBallow_ansible_connectto_ldap\fR (true)
+.RS 4
+Whether to allow the Ansible processes to connect (TCP) to LDAP ports (labeled
+as ldap_port_t).
+.RE
+.PP
+\fBallow_ansible_manage_services\fR (true)
+.RS 4
+Whether to allow the Ansible processes to \fBfully\fR manage \fBany\fR systemd
+service unit.
+.br
+By default, the ansible_t domain is only allowed to query systemd for unit
+statuses.
+.RE
+.PP
+\fBallow_sysadm_read_ansible_files\fR (true)
+.RS 4
+Whether to allow the \fBsysadm_t\fR SELinux domain to read Ansible files (logs,
+cache...) on the managed hosts.
+.RE
+
+.SH File Contexts
+.PP
+\fBansible_conf_t\fR
+.RS 4
+Files containing (not highly sensitive) local Ansible configuration properties
+and information. (Cannot be altered by the Ansible processes)
+.RE
+.PP
+\fBansible_log_t\fR
+.RS 4
+Ansible execution local log files, may contain sensitive information.
+(Append-only access by the Ansible processes, by default)
+.RE
+.PP
+\fBansible_cache_t\fR
+.RS 4
+Ansible (various) ache files, persistent across Ansible connections.
+.RE
+.PP
+\fBansible_tmp_t\fR
+.RS 4
+Ansible temporary files.
+.RE
+.PP
+\fBansible_bin_t\fR
+.RS 4
+Ansible specific binaries which Ansible processes are allowed to execute but
+which other confined processes cannot.
+(Cannot be altered by the Ansible processes)
+.RE
+.PP
+\fBansible_lib_t\fR
+.RS 4
+Ansible libraries files which Ansible processes are allowed to execute but
+which other confined processes cannot.
+(Cannot be altered by the Ansible application)
+.RE
+
+.SH Interfaces
+.PP
+The Ansible SELinux policy is shipped with a set of "interfaces" to easily
+extend the policy.
+.br
+To use an given interface a small SELinux policy module source code must be
+created, compiled and finally loaded.
+.RE
+
+.SH Author
+.PP
+The Ansible SELinux policy was initially authored by Hubert Quarantel-Colombani
+and is now published and maintained by LHQG <https://lhqg.fr/>
+.RE
+
+.SH "See Also"
+.PP
+\fBansible_unconfined_selinux\fR(8),
+\fBselinux\fR(8),
+\fBsemanage\fR(8),
+\fBsemanage-login\fR(8),
+\fBrestorecon\fR(8),
+\fBsepolicy\fR(8),
+\fBsetsebool\fR(8),
+\fBsudo\fR(8),
+\fBsudoers\fR(5)
+.PP
+LHQG GitHub repository <https://github.com/lhqg/selinux_ansible/>

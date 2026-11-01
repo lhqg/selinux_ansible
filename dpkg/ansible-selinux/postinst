@@ -8,7 +8,7 @@ bzip2 /usr/share/selinux/default/ansible.pp
 if selinuxenabled
 then
   restorecon -RFi /{opt,srv}/ansible 
-  restorecon -RFi /{lib,etc}/systemd/system/ansible*
+  restorecon -RFi /etc/selinux/targeted/contexts/users/ansible_u
   restorecon -RFi /var/{lib,log,run,tmp}/ansible
   restorecon -RFi /usr/share/man
 fi

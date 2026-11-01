@@ -63,6 +63,7 @@ gen_require(`
         role system_r;
 
         class capability  { dac_override dac_read_search net_admin } ;
+        class service     all_service_perms;
 ')
 
 ########################################
@@ -77,7 +78,13 @@ userdom_restricted_user_template(ansible)
 mcs_constrained(ansible_t)
 
 # Create and associate SUDO type
-sudo_role_template(ansible, ansible_r, ansible_t)
+ifdef(`distro_redhat',`
+        sudo_role_template(ansible, ansible_r, ansible_t)
+')
+
+ifdef(`distro_debian',`
+        sudo_role_template(ansible, ansible_t, ansible_t, ansible_r)
+')
 mcs_constrained(ansible_sudo_t)
 
 ########################################
@@ -238,10 +245,34 @@ allow ansible_domain systemd_unit_file_type:service status;
 allow ansible_sudo_t systemd_unit_file_type:service all_service_perms;
 
 systemd_exec_systemctl(ansible_domain)
-systemd_list_unit_dirs(ansible_domain)
-systemd_manage_all_unit_files(ansible_domain)
-systemd_read_fifo_file_passwd_run(ansible_domain)
-systemd_search_unit_dirs(ansible_domain)
+
+ifdef(`distro_redhat',`
+        systemd_list_unit_dirs(ansible_domain)
+        systemd_manage_all_unit_files(ansible_domain)
+        systemd_read_fifo_file_passwd_run(ansible_domain)
+        systemd_search_unit_dirs(ansible_domain)
+')
+
+ifdef(`distro_debian',`
+        gen_require(`
+                attribute systemd_unit_file_type;
+                attribute systemd_unit_file_type;
+                type systemd_passwd_var_run_t;
+                type init_var_run_t;
+        ')
+
+        #systemd_list_unit_dirs(ansible_domain)
+        files_search_var_lib(ansible_domain)
+        allow ansible_domain systemd_unit_file_type:dir list_dir_perms;
+
+        #systemd_manage_all_unit_files(ansible_domain)
+        manage_files_pattern(ansible_domain, systemd_unit_file_type, systemd_unit_file_type)
+        manage_lnk_files_pattern(ansible_domain, systemd_unit_file_type, systemd_unit_file_type)
+
+        #systemd_read_fifo_file_passwd_run(ansible_domain)
+        allow ansible_domain init_var_run_t:dir search_dir_perms;
+        read_sock_files_pattern(ansible_domain, systemd_passwd_var_run_t, systemd_passwd_var_run_t)
+')
 
 # Old school INITRC services
 init_read_script_state(ansible_domain)

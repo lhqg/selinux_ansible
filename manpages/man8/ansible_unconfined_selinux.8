@@ -1,0 +1,113 @@
+'\" t
+.TH ansible_unconfined_selinux 8 "Unconfined Ansible SELinux policy man page"
+
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+
+.SH Name
+ansible_unconfined_selinux \- Security Enhanced Linux Policy for Ansible
+
+.SH Description
+.PP
+Security-Enhanced Linux (SELinux) secures Ansible actions via flexible
+mandatory access control (MAC).
+.PP
+.PP
+For Linux system administrators, Ansible is a very powerful tool to manage and
+automate the deployment and configuration of their managed hosts.
+.PP
+Yet, "with great power comes great responsibility"... So, system administrators
+must be careful when using Ansible to manage their machines and make sure that
+Ansible is not misused by malicious users to compromise their managed hosts nor
+to exfiltrate sensitive information from them.
+.PP
+To help them secure their managed hosts, implement the information security
+policies of their organization, apply the principle of least privilege and
+reduce the surface of attack of their managed hosts, the \fBLHQG\fR company has
+developed an open source SELinux policy module to confine the Ansible processes
+on the managed hosts.
+.PP
+When confronted with a situation where the SELinux confinement by the "normal"
+LHQG \fIansible\R SELinux policy module deployed on the managed hosts is too
+restrictive for the Ansible processes to perform all their legitimate tasks,
+system administrators can decide to run Ansible in an unconfined mode on the
+managed hosts.
+.PP
+.SS "WARNING: Running Ansible in an unconfined mode is NOT RECOMMENDED"
+.PP
+Running Ansible in an unconfined mode on the managed hosts means that the
+Ansible processes are not confined by SELinux and can perform \fBany\fR
+access on \fBany\fR resource on the managed hosts, and can perform \fBany\fR
+action on the host itself.
+.PP
+The security of the managed hosts is then fully dependent on the DAC
+(Discretionary Access Control) permissions setup on the managed hosts, and
+restricted only by the privileges of the Linux user running the Ansible
+processes.
+.PP
+The Ansible processes can then be misused by malicious users to compromise the
+managed hosts and/or to exfiltrate sensitive information from them.
+.br
+The Ansible processes can then be misused by malicious users to disrupt the
+services running on the managed hosts.
+.PP
+.SS "DISCLAIMER: Running Ansible in an unconfined mode is DANGEROUS"
+.PP
+Only system administrators who are fully aware of the security implications of
+running Ansible in an unconfined mode on the managed hosts should consider this
+option.
+.PP
+\fBShould you decide to run Ansible in an unconfined mode on the hosts you
+manage, you do so at your own risk and the LHQG company cannot be held
+responsible for any damage or loss of data that may occur.\fR	
+.PP
+.SS "WARNING: Lack of traceability of Ansible actions on the managed hosts"
+.PP
+When Ansible is run in an unconfined mode on the managed hosts, the Ansible
+processes actions and accesses on the managed hosts are not logged by SELinux
+and it will be almost impossible to differentiate between legitimate and
+malicious actions on the managed hosts.
+.PP
+
+.SH Making the \fBansible_t\fR process type unconfined
+.PP
+
+.SH Making the \fBansible_sudo_t\fR process type unconfined
+.PP
+
+.SH Author
+.PP
+The Ansible SELinux policy was initially authored by Hubert Quarantel-Colombani
+and is now published and maintained by LHQG <https://lhqg.fr/>
+.RE
+
+.SH "See Also"
+.PP
+\fBansible_selinux\fR(8),
+\fBselinux\fR(8),
+\fBsemanage\fR(8),
+\fBsemanage-login\fR(8),
+\fBrestorecon\fR(8),
+\fBsepolicy\fR(8),
+\fBsetsebool\fR(8),
+\fBsudo\fR(8),
+\fBsudoers\fR(5)
+.PP
+LHQG GitHub repository <https://github.com/lhqg/selinux_ansible/>

@@ -46,6 +46,8 @@ fi
 
 make -f /usr/share/selinux/devel/Makefile -C %{_builddir}/se_module/ clean
 make -f /usr/share/selinux/devel/Makefile -C %{_builddir}/se_module/ ansible.pp
+make -f /usr/share/selinux/devel/Makefile -C %{_builddir}/se_module/ ansible_unconfined.pp
+make -f /usr/share/selinux/devel/Makefile -C %{_builddir}/se_module/ ansible_sudo_unconfined.pp
 
 ###################################
 
@@ -56,9 +58,12 @@ mkdir -p -m 0755 %{buildroot}/usr/share/selinux/packages/targeted
 mkdir -p -m 0755 %{buildroot}/usr/share/man/man8
 mkdir -p -m 0755 %{buildroot}/%{_docdir}/%{name}
 mkdir -p -m 0755 %{buildroot}/%{_datarootdir}/%{name}
+mkdir -p -m 0755 %{buildroot}/etc/selinux/targeted/contexts/users
 
 install -m 0555 %{_builddir}/scripts/* %{buildroot}/%{_datarootdir}/%{name}/
 install -m 0444 %{_builddir}/se_module/ansible.pp %{buildroot}/usr/share/selinux/packages/targeted/
+install -m 0444 %{_builddir}/se_module/ansible_unconfined.pp %{buildroot}/usr/share/selinux/packages/targeted/
+install -m 0444 %{_builddir}/se_module/ansible_sudo_unconfined.pp %{buildroot}/usr/share/selinux/packages/targeted/
 install -m 0444 %{_builddir}/se_module/ansible_u %{buildroot}/etc/selinux/targeted/contexts/users/
 install -m 0444 %{_builddir}/{LICENSE,README.md} %{buildroot}/%{_docdir}/%{name}/
 install -m 0444 %{_builddir}/manpages/man8/*.8 %{buildroot}/usr/share/man/man8/
@@ -74,7 +79,7 @@ semodule -i /usr/share/selinux/packages/targeted/ansible.pp
 if selinuxenabled
 then
   restorecon -RFi /{opt,srv}/ansible 
-  restorecon -RFi /{lib,etc}/systemd/system/ansible*
+  restorecon -RFi /etc/selinux/targeted/contexts/users/ansible_u
   restorecon -RFi /var/{lib,log,run,tmp}/ansible
   restorecon -RFi /usr/share/man
 fi
@@ -85,6 +90,8 @@ fi
 
 if [ $1 -eq 0 ]
 then
+  semodule -l | grep -qvw ansible_unconfined || semodule -r ansible_unconfined
+  semodule -l | grep -qvw ansible_sudo_unconfined || semodule -r ansible_sudo_unconfined
   semodule -l | grep -qvw ansible || semodule -r ansible
 fi
 
@@ -94,6 +101,8 @@ fi
 %defattr(-,root,root,-)
 
 /usr/share/selinux/packages/targeted/ansible.pp
+/usr/share/selinux/packages/targeted/ansible_unconfined.pp
+/usr/share/selinux/packages/targeted/ansible_sudo_unconfined.pp
 /etc/selinux/targeted/contexts/users/ansible_u
 
 %dir	%{_datarootdir}/%{name}
