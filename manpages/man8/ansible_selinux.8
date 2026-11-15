@@ -135,7 +135,7 @@ so that it cannot fully manage the host and its resources.
 For instance, the \fBansible_t\fR process type is not allowed to manage
 (stop/start/restart...) systemd services nor can it reboot the managed host.
 .PP
-.SS "Privilege escalation, Ansible process type: Bansible_sudo_t"
+.SS "Privilege escalation, Ansible process type: ansible_sudo_t"
 .PP
 The \fBansible_sudo_t\fR process type (domain) is defined for Ansible processes
 when privilege escalation is used using the \fBsudo\fR command as the Asnible
@@ -237,7 +237,7 @@ which other confined processes cannot.
 .RS 4
 Ansible libraries files which Ansible processes are allowed to execute but
 which other confined processes cannot.
-(Cannot be altered by the Ansible application)
+(Cannot be altered by the Ansible processes)
 .RE
 
 .SH Interfaces

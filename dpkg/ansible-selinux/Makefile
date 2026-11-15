@@ -7,10 +7,15 @@ DATAROOTDIR := /usr/share
 install:
 	@make -f /usr/share/selinux/devel/Makefile -C $(SOURCEDIR)/se_module clean
 	@rm -f $(SOURCEDIR)/se_module/ansible.pp.bz2
+	@rm -f $(SOURCEDIR)/se_module/ansible_unconfined.pp.bz2
+	@rm -f $(SOURCEDIR)/se_module/ansible_sudo_unconfined.pp.bz2
 
 	@make -f /usr/share/selinux/devel/Makefile -C $(SOURCEDIR)/se_module ansible.pp
-	@bzip2 $(SOURCEDIR)/se_module/ansible.pp
+	@make -f /usr/share/selinux/devel/Makefile -C $(SOURCEDIR)/se_module ansible_unconfined.pp
+	@make -f /usr/share/selinux/devel/Makefile -C $(SOURCEDIR)/se_module ansible_sudo_unconfined.pp
+	@bzip2 $(SOURCEDIR)/se_module/ansible.pp $(SOURCEDIR)/se_module/ansible_unconfined.pp $(SOURCEDIR)/se_module/ansible_sudo_unconfined.pp
 
+	@mkdir -p -m 0755 $(DESTDIR)/etc/selinux/targeted/contexts/users
 	@mkdir -p -m 0755 $(DESTDIR)/usr/share/selinux/default
 	@mkdir -p -m 0755 $(DESTDIR)/usr/share/man/man8
 	@mkdir -p -m 0755 $(DESTDIR)/$(DOCDIR)/$(NAME)
@@ -18,6 +23,9 @@ install:
 
 	@install -m 0555 $(SOURCEDIR)/scripts/* $(DESTDIR)/$(DATAROOTDIR)/$(NAME)/
 	@install -m 0444 $(SOURCEDIR)/se_module/ansible.pp.bz2 $(DESTDIR)/usr/share/selinux/default/
+	@install -m 0444 $(SOURCEDIR)/se_module/ansible_unconfined.pp.bz2 $(DESTDIR)/usr/share/selinux/default/
+	@install -m 0444 $(SOURCEDIR)/se_module/ansible_sudo_unconfined.pp.bz2 $(DESTDIR)/usr/share/selinux/default/
+	@install -m 0444 $(SOURCEDIR)/se_module/ansible_u $(DESTDIR)/etc/selinux/targeted/contexts/users/
 	@install -m 0444 $(SOURCEDIR)/LICENSE $(DESTDIR)/$(DOCDIR)/$(NAME)/
 	@install -m 0444 $(SOURCEDIR)/README.md $(DESTDIR)/$(DOCDIR)/$(NAME)/
 	@install -m 0444 $(SOURCEDIR)/manpages/man8/*.8 $(DESTDIR)/usr/share/man/man8/
