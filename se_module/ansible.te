@@ -87,6 +87,9 @@ ifdef(`distro_debian',`
 ')
 mcs_constrained(ansible_sudo_t)
 
+role ansible_r;
+role ansible_r types { ansible_t ansible_sudo_t };
+
 ########################################
 #
 #	Types and attributes declarations
