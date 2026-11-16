@@ -1,0 +1,12 @@
+Source: ansible-selinux-devel
+Maintainer: LHQG SAS <technical@lhqg.fr>
+Homepage: https://github.com/lhqg/selinux_ansible
+Section: misc
+Priority: optional
+Standards-Version: 4.7.0
+Build-depends: debhelper-compat (= 13)
+
+Package: ansible-selinux-devel
+Architecture: all
+Depends: ansible-selinux (= %version%), selinux-policy-dev
+Description: SELinux policy module for Ansible on managed hosts - devel

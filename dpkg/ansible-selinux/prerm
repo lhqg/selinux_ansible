@@ -1,0 +1,15 @@
+#!/bin/bash
+
+RC=0
+
+if [[ "$1" == "remove" ]]
+then
+	semodule -l | grep -qvw ansible_unconfined || semodule -r ansible_unconfined
+	RC=$(( $RC || $? ))
+	semodule -l | grep -qvw ansible_sudo_unconfined || semodule -r ansible_sudo_unconfined
+	RC=$(( $RC || $? ))
+	semodule -l | grep -qvw ansible || semodule -r ansible
+	RC=$(( $RC || $? ))
+fi
+
+exit $RC
