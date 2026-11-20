@@ -6,7 +6,7 @@
 [![GitHub Last commit](https://img.shields.io/github/last-commit/lhqg/selinux_ansible)](https://github.com/lhqg/selinux_ansible/commits/main)
 ![GitHub Downloads](https://img.shields.io/github/downloads/lhqg/selinux_ansible/total)
 
-# SELinux policy policy modules for LHQG
+# SELinux policy modules for Ansible
 
 Maintained and provided as a community contribution by [LHQG](https://www.lhqg.fr/).
 
